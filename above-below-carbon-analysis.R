@@ -70,6 +70,11 @@ sitr = read.table("sitr.csv", head = T, sep = ",")
 ####################################################################################
 ####################################################################################
 
+#make new column in sitr for proportion of parcel comprised of yard (the managed part of the
+#parcel)
+
+sitr$peryd = sitr$yd / sitr$Area_Tot_Cor
+
 #################################
 #normality of response variables#
 #################################
@@ -100,16 +105,18 @@ hist(sitrcla$tbio.allo.c)
 #aboveground biomass carbon as a function of location within yard
 hist(sitrloc$tbio.allo.c)
 
+#yard size and proportion of parcel comprised of yard
+hist(sitr$yd)
+hist(sitr$peryd)
+
 #belowground soil carbon data mostly follow normal distribution
 #aboveground biomass carbon data do not and will likely need log transformation
+#yard size and percent of parcel comprised of yard do not follow a normal distribution
+#and will need to be log transformed when used as response variables
 
 sitr$ln.Cseq = ifelse(sitr$Cseqha == 0, 0, log(sitr$Cseqha))
 sitrcla$ln.Cseq = ifelse(sitrcla$Cseqha == 0, 0, log(sitrcla$Cseqha))
 sitrloc$ln.Cseq = ifelse(sitrloc$Cseqha == 0, 0, log(sitrloc$Cseqha))
-
-sitr$ln.perH = ifelse(sitr$perHbio == 0, 0, log(sitr$perHbio))
-sitrcla$ln.perH = ifelse(sitrcla$perHbio == 0, 0, log(sitrcla$perHbio))
-sitrloc$ln.perH = ifelse(sitrloc$perHbio == 0, 0, log(sitrloc$perHbio))
 
 ################################
 #Outliers in response variables#
@@ -229,7 +236,6 @@ sitr  <- sitr[order(sitr$ln.Cseq), ]
 dotchart(sitr$dur,  xlab = "Residence Duration",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
-
 #median resident age
 boxplot(sitr$MEDIANAGE, ylab = "Median Age")
 sitr  <- sitr[order(sitr$stoC_at10), ]
@@ -237,6 +243,15 @@ dotchart(sitr$MEDIANAGE,  xlab = "Median Age",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 sitr  <- sitr[order(sitr$ln.Cseq), ]
 dotchart(sitr$MEDIANAGE,  xlab = "Median Age",
+         ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+
+#yard size
+boxplot(sitr$yd, ylab = "Yard Size")
+sitr  <- sitr[order(sitr$stoC_at10), ]
+dotchart(sitr$yd,  xlab = "Yard Size",
+         ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
+sitr  <- sitr[order(sitr$ln.Cseq), ]
+dotchart(sitr$yd,  xlab = "Yard Size",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
 ######################
@@ -2708,6 +2723,246 @@ anova(gls.ydC, lme.ydC)
 
 #use linear model
 lm.ydC = lm(ln.Cseq ~ yd, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.ydC)
+
+#############
+#############
+#Yard Size  #
+#############
+#############
+
+#############
+#housing age#
+#############
+
+#select random effects
+gls.Hageyd = gls(log(yd) ~Hage, data = sitr, na.action = na.omit)
+lme.Hageyd = lme(fixed = log(yd) ~Hage, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.HageC, lme.HageC)
+#no difference in model fit
+
+#use linear model
+lm.Hageyd = lm(log(yd) ~Hage, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.Hageyd)
+
+################
+#housing age ^2#
+################
+
+#select random effects
+gls.Hageyd2 = gls(log(yd) ~Hage + I(Hage^2), data = sitr, na.action = na.omit)
+lme.Hageyd2 = lme(fixed = log(yd) ~Hage + I(Hage^2), random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.Hageyd2, lme.Hageyd2)
+#no difference in model fit
+
+#use linear model
+lm.Hageyd2 = lm(log(yd) ~Hage + I(Hage^2), data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.Hageyd2)
+
+####################
+#population density#
+####################
+
+#select random effects
+gls.POP_Densityd = gls(log(yd) ~POP_Densit, data = sitr, na.action = na.omit)
+lme.POP_Densityd = lme(fixed = log(yd) ~POP_Densit, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.POP_DensitC, lme.POP_DensitC)
+#no difference in model fit
+
+#use linear model
+lm.POP_Densityd = lm(log(yd) ~POP_Densit, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.POP_DensitC)
+
+##############
+#percent silt#
+##############
+
+#select random effects
+gls.Siltyd = gls(log(yd) ~Silt, data = sitr, na.action = na.omit)
+lme.Siltyd = lme(fixed = log(yd) ~Silt, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.SiltC, lme.SiltC)
+#no difference in model fit
+
+#use linear model
+lm.Siltyd = lm(log(yd) ~Silt, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.SiltC)
+
+###############
+#median income#
+###############
+
+#select random effects
+gls.medINC.1yd = gls(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+lme.medINC.1yd = lme(fixed = log(yd) ~medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.medINC.1C, lme.medINC.1C)
+#no difference in model fit
+
+#use linear model
+lm.medINC.1yd = lm(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.medINC.1C)
+
+################
+#assessed value#
+################
+
+#select random effects
+gls.TotalValuayd = gls(log(yd) ~TotalValua, data = sitr, na.action = na.omit)
+lme.TotalValuayd = lme(fixed = log(yd) ~TotalValua, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.TotalValuaC, lme.TotalValuaC)
+#no difference in model fit
+
+#use linear model
+lm.TotalValuayd = lm(log(yd) ~TotalValua, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.TotalValuaC)
+
+################
+#percent vacant#
+################
+
+#select random effects
+gls.perVACyd = gls(log(yd) ~perVAC, data = sitr, na.action = na.omit)
+lme.perVACyd = lme(fixed = log(yd) ~perVAC, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.perVACC, lme.perVACC)
+#no difference in model fit
+
+#use linear model
+lm.perVACyd = lm(log(yd) ~perVAC, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.perVACC)
+
+##################
+#percent minority#
+##################
+
+#select random effects
+gls.perMINyd = gls(log(yd) ~perMIN, data = sitr, na.action = na.omit)
+lme.perMINyd = lme(fixed = log(yd) ~perMIN, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.perMINC, lme.perMINC)
+#no difference in model fit
+
+#use linear model
+lm.perMINyd = lm(log(yd) ~perMIN, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.perMINC)
+
+#################
+#percent married#
+#################
+
+#select random effects
+gls.perMARyd = gls(log(yd) ~perMAR, data = sitr, na.action = na.omit)
+lme.perMARyd = lme(fixed = log(yd) ~perMAR, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.perMARC, lme.perMARC)
+#no difference in model fit
+
+#use linear model
+lm.perMARyd = lm(log(yd) ~perMAR, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.perMARC)
+
+###############
+#median income#
+###############
+
+#select random effects
+gls.medINC.1yd = gls(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+lme.medINC.1yd = lme(fixed = log(yd) ~medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.medINC.1C, lme.medINC.1C)
+#no difference in model fit
+
+#use linear model
+lm.medINC.1yd = lm(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.medINC.1C)
+
+#####################
+#median resident age#
+#####################
+
+#select random effects
+gls.medAGE.1yd = gls(log(yd) ~medAGE.1, data = sitr, na.action = na.omit)
+lme.medAGE.1yd = lme(fixed = log(yd) ~medAGE.1, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.medAGE.1C, lme.medAGE.1C)
+#no difference in model fit
+
+#use linear model
+lm.medAGE.1yd = lm(log(yd) ~medAGE.1, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.medAGE.1C)
+
+##########################
+#median resident duration#
+##########################
+
+#select random effects
+gls.duryd = gls(log(yd) ~dur, data = sitr, na.action = na.omit)
+lme.duryd = lme(fixed = log(yd) ~dur, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.durC, lme.durC)
+#no difference in model fit
+
+#use linear model
+lm.duryd = lm(log(yd) ~dur, data = sitr, na.action = na.omit)
+
+#verify homogeneity and normality of model residuals
+plot(lm.durC)
+
+###########
+#yard size#
+###########
+
+#select random effects
+gls.ydyd = gls(yd ~ yd, data = sitr, na.action = na.omit)
+lme.ydyd = lme(fixed = yd ~ yd, random = ~1|ID, data = sitr, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.ydC, lme.ydC)
+#no difference in model fit
+
+#use linear model
+lm.ydyd = lm(yd ~ yd, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.ydC)
