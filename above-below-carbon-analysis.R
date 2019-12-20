@@ -8,7 +8,6 @@
 #"sites_scn.csv", "loc_sites.csv", "sitrcla.csv", "sitrloc.csv", and "sitr.csv" datasets
 
 #Code was developed by A. Contosta
-
 ####################################################################################
 ####################################################################################
 #Initial set up
