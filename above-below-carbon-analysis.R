@@ -5,7 +5,7 @@
 #as part of a paper submitted to Lanscape and Urban Planning (doi:##################)
 
 #The datasets required to run this code are located in the carbon-small-cities repository and include
-#xyz datasets
+#"sites_scn.csv", "loc_sites.csv", "sitrcla.csv", "sitrloc.csv", and "sitr.csv" datasets
 
 #Code was developed by A. Contosta
 
@@ -16,18 +16,20 @@
 ####################################################################################
 
 #call libraries
-#library(data.table)
-#library(splitstackshape)
-#library(zoo)
-#library(matrixStats)
-#library(MASS)
-#library(stringr)
-#library(dunn.test)
-#library(plyr)
-#library(gmodels)
+
 library(nlme)
-#library(relaimpo)
 library(multcomp)
+
+#run script to introduce multiple comparison methods for 'gls' objects.
+model.matrix.gls <- function(object, ...) {
+  model.matrix(terms(object), data = getData(object), ...)
+}
+model.frame.gls <- function(object, ...) {
+  model.frame(formula(object), data = getData(object), ...)
+}
+terms.gls <- function(object, ...) {
+  terms(model.frame(object), ...)
+}
 
 #set working directory and read in data
 setwd("C:\\Users\\alix\\Box Sync\\UNH\\Projects\\CCS_Manchester\\Data\\R Projects\\carbon-small-cities\\Data")
@@ -97,26 +99,17 @@ hist(loc_sites$stoCloc_at40)
 hist(loc_sites$stoCloc_at50)
 
 #aboveground biomass carbon across all yards
-hist(sitr$tbio.allo.c)
+hist(sitr$Cseqha)
 
 #aboveground biomass carbon as a function of size class
-hist(sitrcla$tbio.allo.c)
+hist(sitrcla$Cseqha)
 
 #aboveground biomass carbon as a function of location within yard
-hist(sitrloc$tbio.allo.c)
-
-#yard size and proportion of parcel comprised of yard
-hist(sitr$yd)
-hist(sitr$peryd)
+hist(sitrloc$Cseqha)
 
 #belowground soil carbon data mostly follow normal distribution
-#aboveground biomass carbon data do not and will likely need log transformation
-#yard size and percent of parcel comprised of yard do not follow a normal distribution
-#and will need to be log transformed when used as response variables
-
-sitr$ln.Cseq = ifelse(sitr$Cseqha == 0, 0, log(sitr$Cseqha))
-sitrcla$ln.Cseq = ifelse(sitrcla$Cseqha == 0, 0, log(sitrcla$Cseqha))
-sitrloc$ln.Cseq = ifelse(sitrloc$Cseqha == 0, 0, log(sitrloc$Cseqha))
+#aboveground biomass carbon data do not.
+#log transformation not possible due to presence of zero values
 
 ################################
 #Outliers in response variables#
@@ -140,15 +133,18 @@ boxplot(loc_sites$stoCloc_at40)
 boxplot(loc_sites$stoCloc_at50)
 
 #aboveground biomass carbon, all size classes
-boxplot(sitr$ln.Cseq)
+boxplot(sitr$Cseqha)
 
 #aboveground biomass carbon, within size classes
-boxplot(sitrcla[sitrcla$fiac == "POL", ]$ln.Cseq)
-boxplot(sitrcla[sitrcla$fiac == "SAP", ]$ln.Cseq)
-boxplot(sitrcla[sitrcla$fiac == "SAW", ]$ln.Cseq)
+boxplot(sitrcla[sitrcla$fiac == "POL", ]$Cseqha)
+boxplot(sitrcla[sitrcla$fiac == "SAP", ]$Cseqha)
+boxplot(sitrcla[sitrcla$fiac == "SAW", ]$Cseqha)
 
 #aboveground biomass carbon, all size classes, separated by yard location
-boxplot(sitrloc$ln.Cseq)
+boxplot(sitrloc$Cseqha)
+
+#two of the yards appear to be outliers and have crazy high aboveground biomass values that may
+#need to be removed
 
 #################################
 #Outliers in predictor variables#
@@ -159,7 +155,7 @@ boxplot(sitr$POP_Densit, ylab = "Population Density")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$POP_Densit,  xlab = "Population Density",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$POP_Densit,  xlab = "Population Density",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -169,7 +165,7 @@ boxplot(sitr$Hage, ylab = "Housing Age")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$Hage,  xlab = "Housing Age",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$Hage,  xlab = "Housing Age",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -178,7 +174,7 @@ boxplot(sitr$Silt, ylab = "Silt")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$Silt,  xlab = "Silt",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$Silt,  xlab = "Silt",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -187,7 +183,7 @@ boxplot(sitr$ln.perH, ylab = "hardwood biomass")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$ln.perH,  xlab = "hardwood biomass",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$ln.perH,  xlab = "hardwood biomass",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -196,7 +192,7 @@ boxplot(sitr$medINC, ylab = "Median Income")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$medINC,  xlab = "Median Income",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$medINC,  xlab = "Median Income",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -205,7 +201,7 @@ boxplot(sitr$TotalValua, ylab = "Assessed Value")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$TotalValua,  xlab = "Assessed Value",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$TotalValua,  xlab = "Assessed Value",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -214,7 +210,7 @@ boxplot(sitr$perVAC, ylab = "Percent Vacant")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$perVAC,  xlab = "Percent Vacant",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$perVAC,  xlab = "Percent Vacant",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -223,7 +219,7 @@ boxplot(sitr$perMAR, ylab = "Perecent Married")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$perMAR,  xlab = "Percent Married",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$perMAR,  xlab = "Percent Married",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -232,7 +228,7 @@ boxplot(sitr$dur, ylab = "Residence Duration")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$dur,  xlab = "Residence Duration",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$dur,  xlab = "Residence Duration",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -241,7 +237,7 @@ boxplot(sitr$MEDIANAGE, ylab = "Median Age")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$MEDIANAGE,  xlab = "Median Age",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$MEDIANAGE,  xlab = "Median Age",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -250,7 +246,7 @@ boxplot(sitr$yd, ylab = "Yard Size")
 sitr  <- sitr[order(sitr$stoC_at10), ]
 dotchart(sitr$yd,  xlab = "Yard Size",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
-sitr  <- sitr[order(sitr$ln.Cseq), ]
+sitr  <- sitr[order(sitr$tbio.allo.c), ]
 dotchart(sitr$yd,  xlab = "Yard Size",
          ylab = "Order of the data", cex.lab = 1.5, cex.main = 1.5, cex.axis = 1.5)
 
@@ -266,17 +262,19 @@ sites_scn$Depth.Fraction = factor(sites_scn$Depth.Fraction)
 sitrcla$ID = factor(sitrcla$ID)
 sitrcla$fiac = factor(sitrcla$fiac)
 
-
-#make new columns for median income (medINC.1), and median age
+#make new columns for aboveground biomass (tbio.allo.c), median income (medINC.1), and median age
 #(medAGE.1) to remove outliers identified during preliminary data analysis
-#outliers include median income < 40K > 100K, age > 60 
+#outliers include aboveground biomass > 100,000 kg C / m2, median income < 40K > 100K, age > 60 
 
+sitr$tbio.allo.c = ifelse(sitr$ID == 3 | sitr$ID == 35, NA, sitr$Cseqha)
 sitr$medINC.1 = ifelse(sitr$medINC < 4e4 | sitr$medINC > 1e5, NA, sitr$medINC)
 sitr$medAGE.1 = ifelse(sitr$MEDIANAGE > 60, NA, sitr$MEDIANAGE)
 
+sitrcla$tbio.allo.c = ifelse(sitrcla$ID == 3 | sitrcla$ID == 35, NA, sitrcla$Cseqha)
 sitrcla$medINC.1 = ifelse(sitrcla$medINC < 4e4 | sitrcla$medINC > 1e5, NA, sitrcla$medINC)
 sitrcla$medAGE.1 = ifelse(sitrcla$MEDIANAGE > 60, NA, sitrcla$MEDIANAGE)
 
+sitrloc$tbio.allo.c = ifelse(sitrloc$ID == 3 | sitrloc$ID == 35, NA, sitrloc$Cseqha)
 sitrloc$medINC.1 = ifelse(sitrloc$medINC < 4e4 | sitrloc$medINC > 1e5, NA, sitrloc$medINC)
 sitrloc$medAGE.1 = ifelse(sitrloc$MEDIANAGE > 60, NA, sitrloc$MEDIANAGE)
 
@@ -295,10 +293,10 @@ boxplot(stoCloc_at40 ~ Loc, data = loc_sites)
 boxplot(stoCloc_at50 ~ Loc, data = loc_sites)
 
 #aboveground biomass carbon as a function of size class
-boxplot(ln.Cseq ~ fiac, data = sitrcla)
+boxplot(tbio.allo.c ~ fiac, data = sitrcla)
 
 #aboveground biomass carbon as a function of location in yard
-boxplot(ln.Cseq ~ Loc, data = sitrloc)
+boxplot(tbio.allo.c ~ Loc, data = sitrloc)
 
 ####################################################################################
 ####################################################################################
@@ -342,30 +340,203 @@ summary((glht(lme.stoC, linfct = mcp(Depth.Fraction = "Tukey"))))
 ###########################
 
 #select random effects
-gls.treecla = gls(ln.Cseq ~ fiac, data = sitrcla, na.action = na.omit)
-lme.treecla = lme(fixed = ln.Cseq ~ fiac, random = ~1|ID, data = sitrcla, na.action = na.omit)
+gls.treecla = gls(tbio.allo.c ~ fiac, data = sitrcla, na.action = na.omit)
+lme.treecla = lme(fixed = tbio.allo.c ~ fiac, random = ~1|ID, data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.treecla, lme.treecla)
-#model fit improved with ID as a random intercept
+#model fit not improved with ID as a random intercept
 
 #select variance structures
-var.treecla = update(lme.treecla, weights = varIdent(form = ~ 1 | fiac))
+var.treecla = update(gls.treecla, weights = varIdent(form = ~ 1 | fiac))
 
 #compare model fits
-BIC(lme.treecla, var.treecla)
-#no difference in model fit
+BIC(gls.treecla, var.treecla)
+#model fit improved with fiac as a constant variance structure
 
 #examine significance of fixed effects
-anova(lme.treecla, type = "marginal")
+anova(var.treecla, type = "marginal")
 #effect of depth fraction highly significant
 
 #validate model by examining homogeneity and normality of residuals
-plot(lme.treecla)
-qqnorm(lme.treecla)
+plot(var.treecla)
+qqnorm(var.treecla)
 
 #obtain pairwise comparisons of differences between depth fractions
-summary((glht(lme.treecla, linfct = mcp(fiac = "Tukey"))))
+summary((glht(var.treecla, linfct = mcp(fiac = "Tukey"))))
+
+####################################################################################
+####################################################################################
+#ANOVA-Type analyses of differences in belowground and aboveground 
+#carbon stocks between front and backyards
+####################################################################################
+####################################################################################
+
+###########################
+#belowground carbon stocks#
+###########################
+
+###########
+#0 to 10 cm
+###########
+
+#select random effects
+gls.stoC_loc_10 = gls(stoCloc_at10 ~ Loc, data = loc_sites, na.action = na.omit)
+lme.stoC_loc_10 = lme(fixed = stoCloc_at10 ~ Loc, random = ~1|ID, data = loc_sites, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.stoC_loc_10, lme.stoC_loc_10)
+#model fit improved with a random intercept
+
+#select variance structures
+var.stoC_loc_10 = update(lme.stoC_loc_10, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(lme.stoC_loc_10, var.stoC_loc_10)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(lme.stoC_loc_10, type = "marginal")
+#effect of location not significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(lme.stoC_loc_10)
+qqnorm(lme.stoC_loc_10)
+
+###########
+#10 to 20 cm
+###########
+
+#select random effects
+gls.stoC_loc_20 = gls(stoCloc_at20 ~ Loc, data = loc_sites, na.action = na.omit)
+lme.stoC_loc_20 = lme(fixed = stoCloc_at20 ~ Loc, random = ~1|ID, data = loc_sites, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.stoC_loc_20, lme.stoC_loc_20)
+#model fit improved with a random intercept
+
+#select variance structures
+var.stoC_loc_20 = update(lme.stoC_loc_20, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(lme.stoC_loc_20, var.stoC_loc_20)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(lme.stoC_loc_20, type = "marginal")
+#effect of location not significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(lme.stoC_loc_20)
+qqnorm(lme.stoC_loc_20)
+
+###########
+#20 to 30 cm
+###########
+
+#select random effects
+gls.stoC_loc_30 = gls(stoCloc_at30 ~ Loc, data = loc_sites, na.action = na.omit)
+lme.stoC_loc_30 = lme(fixed = stoCloc_at30 ~ Loc, random = ~1|ID, data = loc_sites, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.stoC_loc_30, lme.stoC_loc_30)
+#model fit improved with a random intercept
+
+#select variance structures
+var.stoC_loc_30 = update(lme.stoC_loc_30, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(lme.stoC_loc_30, var.stoC_loc_30)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(lme.stoC_loc_30, type = "marginal")
+#effect of location not significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(lme.stoC_loc_30)
+qqnorm(lme.stoC_loc_30)
+
+###########
+#30 to 40 cm
+###########
+
+#select random effects
+gls.stoC_loc_40 = gls(stoCloc_at40 ~ Loc, data = loc_sites, na.action = na.omit)
+lme.stoC_loc_40 = lme(fixed = stoCloc_at40 ~ Loc, random = ~1|ID, data = loc_sites, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.stoC_loc_40, lme.stoC_loc_40)
+#model fit improved with a random intercept
+
+#select variance structures
+var.stoC_loc_40 = update(lme.stoC_loc_40, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(lme.stoC_loc_40, var.stoC_loc_40)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(lme.stoC_loc_40, type = "marginal")
+#effect of location not significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(lme.stoC_loc_40)
+qqnorm(lme.stoC_loc_40)
+
+###########
+#40 to 50 cm
+###########
+
+#select random effects
+gls.stoC_loc_50 = gls(stoCloc_at50 ~ Loc, data = loc_sites, na.action = na.omit)
+lme.stoC_loc_50 = lme(fixed = stoCloc_at50 ~ Loc, random = ~1|ID, data = loc_sites, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.stoC_loc_50, lme.stoC_loc_50)
+#model fit not improved with a random intercept
+
+#select variance structures
+var.stoC_loc_50 = update(gls.stoC_loc_50, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(gls.stoC_loc_50, var.stoC_loc_50)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(gls.stoC_loc_50, type = "marginal")
+#effect of location not significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(gls.stoC_loc_50)
+qqnorm(gls.stoC_loc_50)
+
+#####################
+#aboveground biomass
+#####################
+
+#select random effects
+gls.Cseqha = gls(tbio.allo.c ~ Loc, data = sitrloc, na.action = na.omit)
+lme.Cseqha = lme(fixed = tbio.allo.c ~ Loc, random = ~1|ID, data = sitrloc, na.action = na.omit)
+
+#compare model fits using the likelihood ratio test
+anova(gls.Cseqha, lme.Cseqha)
+#model fit not improved with a random intercept
+
+#select variance structures
+var.Cseqha = update(gls.Cseqha, weights = varIdent(form = ~ 1 | Loc))
+
+#compare model fits
+BIC(gls.Cseqha, var.Cseqha)
+#no difference in model fit
+
+#examine significance of fixed effects
+anova(gls.Cseqha, type = "marginal")
+#effect of depth fraction highly significant
+
+#validate model by examining homogeneity and normality of residuals
+plot(gls.Cseqha)
+qqnorm(gls.Cseqha)
 
 ################################################################################
 ################################################################################
@@ -1832,15 +2003,15 @@ plot(lm.ydC.50)
 #############
 
 #select random effects
-gls.HageC.SAP = gls(ln.Cseq ~ Hage, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.HageC.SAP = lme(fixed = ln.Cseq ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.HageC.SAP = gls(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.HageC.SAP = lme(fixed = tbio.allo.c ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.SAP, lme.HageC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.HageC.SAP = lm(ln.Cseq ~ Hage, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.HageC.SAP = lm(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.SAP)
@@ -1850,15 +2021,15 @@ plot(lm.HageC.SAP)
 ################
 
 #select random effects
-gls.HageC.SAP2 = gls(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.HageC.SAP2 = lme(fixed = ln.Cseq ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.HageC.SAP2 = gls(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.HageC.SAP2 = lme(fixed = tbio.allo.c ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.SAP2, lme.HageC.SAP2)
 #no difference in model fit
 
 #use linear model
-lm.HageC.SAP2 = lm(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.HageC.SAP2 = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.SAP2)
@@ -1868,15 +2039,15 @@ plot(lm.HageC.SAP2)
 ####################
 
 #select random effects
-gls.POP_DensitC.SAP = gls(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.POP_DensitC.SAP = lme(fixed = ln.Cseq ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.POP_DensitC.SAP = gls(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.POP_DensitC.SAP = lme(fixed = tbio.allo.c ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.POP_DensitC.SAP, lme.POP_DensitC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.POP_DensitC.SAP = lm(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.POP_DensitC.SAP = lm(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.POP_DensitC.SAP)
@@ -1886,15 +2057,15 @@ plot(lm.POP_DensitC.SAP)
 ##############
 
 #select random effects
-gls.SiltC.SAP = gls(ln.Cseq ~ Silt, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.SiltC.SAP = lme(fixed = ln.Cseq ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.SiltC.SAP = gls(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.SiltC.SAP = lme(fixed = tbio.allo.c ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.SiltC.SAP, lme.SiltC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.SiltC.SAP = lm(ln.Cseq ~ Silt, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.SiltC.SAP = lm(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.SiltC.SAP)
@@ -1904,15 +2075,15 @@ plot(lm.SiltC.SAP)
 ###############
 
 #select random effects
-gls.medINC.1C.SAP = gls(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.medINC.1C.SAP = lme(fixed = ln.Cseq ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.medINC.1C.SAP = gls(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.medINC.1C.SAP = lme(fixed = tbio.allo.c ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medINC.1C.SAP, lme.medINC.1C.SAP)
 #no difference in model fit
 
 #use linear model
-lm.medINC.1C.SAP = lm(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.medINC.1C.SAP = lm(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medINC.1C.SAP)
@@ -1922,15 +2093,15 @@ plot(lm.medINC.1C.SAP)
 ################
 
 #select random effects
-gls.TotalValuaC.SAP = gls(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.TotalValuaC.SAP = lme(fixed = ln.Cseq ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.TotalValuaC.SAP = gls(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.TotalValuaC.SAP = lme(fixed = tbio.allo.c ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.TotalValuaC.SAP, lme.TotalValuaC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.TotalValuaC.SAP = lm(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.TotalValuaC.SAP = lm(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.TotalValuaC.SAP)
@@ -1940,15 +2111,15 @@ plot(lm.TotalValuaC.SAP)
 ################
 
 #select random effects
-gls.perVACC.SAP = gls(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.perVACC.SAP = lme(fixed = ln.Cseq ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.perVACC.SAP = gls(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.perVACC.SAP = lme(fixed = tbio.allo.c ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perVACC.SAP, lme.perVACC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.perVACC.SAP = lm(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.perVACC.SAP = lm(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perVACC.SAP)
@@ -1958,15 +2129,15 @@ plot(lm.perVACC.SAP)
 ##################
 
 #select random effects
-gls.perMINC.SAP = gls(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.perMINC.SAP = lme(fixed = ln.Cseq ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.perMINC.SAP = gls(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.perMINC.SAP = lme(fixed = tbio.allo.c ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMINC.SAP, lme.perMINC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.perMINC.SAP = lm(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.perMINC.SAP = lm(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMINC.SAP)
@@ -1976,15 +2147,15 @@ plot(lm.perMINC.SAP)
 #################
 
 #select random effects
-gls.perMARC.SAP = gls(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.perMARC.SAP = lme(fixed = ln.Cseq ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.perMARC.SAP = gls(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.perMARC.SAP = lme(fixed = tbio.allo.c ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMARC.SAP, lme.perMARC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.perMARC.SAP = lm(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.perMARC.SAP = lm(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMARC.SAP)
@@ -1994,15 +2165,15 @@ plot(lm.perMARC.SAP)
 #####################
 
 #select random effects
-gls.medAGE.1C.SAP = gls(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.medAGE.1C.SAP = lme(fixed = ln.Cseq ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.medAGE.1C.SAP = gls(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.medAGE.1C.SAP = lme(fixed = tbio.allo.c ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medAGE.1C.SAP, lme.medAGE.1C.SAP)
 #no difference in model fit
 
 #use linear model
-lm.medAGE.1C.SAP = lm(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.medAGE.1C.SAP = lm(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medAGE.1C.SAP)
@@ -2012,15 +2183,15 @@ plot(lm.medAGE.1C.SAP)
 ##########################
 
 #select random effects
-gls.durC.SAP = gls(ln.Cseq ~ dur, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.durC.SAP = lme(fixed = ln.Cseq ~ dur, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.durC.SAP = gls(tbio.allo.c ~ dur, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.durC.SAP = lme(fixed = tbio.allo.c ~ dur, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.durC.SAP, lme.durC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.durC.SAP = lm(ln.Cseq ~ dur, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.durC.SAP = lm(tbio.allo.c ~ dur, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.durC.SAP)
@@ -2030,15 +2201,15 @@ plot(lm.durC.SAP)
 ###########
 
 #select random effects
-gls.ydC.SAP = gls(ln.Cseq ~ yd, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
-lme.ydC.SAP = lme(fixed = ln.Cseq ~ yd, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+gls.ydC.SAP = gls(tbio.allo.c ~ yd, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lme.ydC.SAP = lme(fixed = tbio.allo.c ~ yd, random = ~1|ID, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.ydC.SAP, lme.ydC.SAP)
 #no difference in model fit
 
 #use linear model
-lm.ydC.SAP = lm(ln.Cseq ~ yd, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
+lm.ydC.SAP = lm(tbio.allo.c ~ yd, subset = sitrcla$fiac == "SAP",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.ydC.SAP)
@@ -2054,15 +2225,15 @@ plot(lm.ydC.SAP)
 #############
 
 #select random effects
-gls.HageC.POL = gls(ln.Cseq ~ Hage, subset = sitrcla$fiac == "POL", data = sitrcla, na.action = na.omit)
-lme.HageC.POL = lme(fixed = ln.Cseq ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.HageC.POL = gls(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "POL", data = sitrcla, na.action = na.omit)
+lme.HageC.POL = lme(fixed = tbio.allo.c ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.POL, lme.HageC.POL)
 #no difference in model fit
 
 #use linear model
-lm.HageC.POL = lm(ln.Cseq ~ Hage, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.HageC.POL = lm(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.POL)
@@ -2072,15 +2243,15 @@ plot(lm.HageC.POL)
 ################
 
 #select random effects
-gls.HageC.POL2 = gls(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.HageC.POL2 = lme(fixed = ln.Cseq ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.HageC.POL2 = gls(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.HageC.POL2 = lme(fixed = tbio.allo.c ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.POL2, lme.HageC.POL2)
 #no difference in model fit
 
 #use linear model
-lm.HageC.POL2 = lm(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.HageC.POL2 = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.POL2)
@@ -2090,15 +2261,15 @@ plot(lm.HageC.POL2)
 ####################
 
 #select random effects
-gls.POP_DensitC.POL = gls(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.POP_DensitC.POL = lme(fixed = ln.Cseq ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.POP_DensitC.POL = gls(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.POP_DensitC.POL = lme(fixed = tbio.allo.c ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.POP_DensitC.POL, lme.POP_DensitC.POL)
 #no difference in model fit
 
 #use linear model
-lm.POP_DensitC.POL = lm(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.POP_DensitC.POL = lm(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.POP_DensitC.POL)
@@ -2108,15 +2279,15 @@ plot(lm.POP_DensitC.POL)
 ##############
 
 #select random effects
-gls.SiltC.POL = gls(ln.Cseq ~ Silt, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.SiltC.POL = lme(fixed = ln.Cseq ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.SiltC.POL = gls(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.SiltC.POL = lme(fixed = tbio.allo.c ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.SiltC.POL, lme.SiltC.POL)
 #no difference in model fit
 
 #use linear model
-lm.SiltC.POL = lm(ln.Cseq ~ Silt, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.SiltC.POL = lm(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.SiltC.POL)
@@ -2126,15 +2297,15 @@ plot(lm.SiltC.POL)
 ###############
 
 #select random effects
-gls.medINC.1C.POL = gls(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.medINC.1C.POL = lme(fixed = ln.Cseq ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.medINC.1C.POL = gls(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.medINC.1C.POL = lme(fixed = tbio.allo.c ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medINC.1C.POL, lme.medINC.1C.POL)
 #no difference in model fit
 
 #use linear model
-lm.medINC.1C.POL = lm(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.medINC.1C.POL = lm(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medINC.1C.POL)
@@ -2144,15 +2315,15 @@ plot(lm.medINC.1C.POL)
 ################
 
 #select random effects
-gls.TotalValuaC.POL = gls(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.TotalValuaC.POL = lme(fixed = ln.Cseq ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.TotalValuaC.POL = gls(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.TotalValuaC.POL = lme(fixed = tbio.allo.c ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.TotalValuaC.POL, lme.TotalValuaC.POL)
 #no difference in model fit
 
 #use linear model
-lm.TotalValuaC.POL = lm(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.TotalValuaC.POL = lm(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.TotalValuaC.POL)
@@ -2162,15 +2333,15 @@ plot(lm.TotalValuaC.POL)
 ################
 
 #select random effects
-gls.perVACC.POL = gls(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.perVACC.POL = lme(fixed = ln.Cseq ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.perVACC.POL = gls(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.perVACC.POL = lme(fixed = tbio.allo.c ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perVACC.POL, lme.perVACC.POL)
 #no difference in model fit
 
 #use linear model
-lm.perVACC.POL = lm(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.perVACC.POL = lm(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perVACC.POL)
@@ -2180,15 +2351,15 @@ plot(lm.perVACC.POL)
 ##################
 
 #select random effects
-gls.perMINC.POL = gls(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.perMINC.POL = lme(fixed = ln.Cseq ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.perMINC.POL = gls(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.perMINC.POL = lme(fixed = tbio.allo.c ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMINC.POL, lme.perMINC.POL)
 #no difference in model fit
 
 #use linear model
-lm.perMINC.POL = lm(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.perMINC.POL = lm(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMINC.POL)
@@ -2198,15 +2369,15 @@ plot(lm.perMINC.POL)
 #################
 
 #select random effects
-gls.perMARC.POL = gls(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.perMARC.POL = lme(fixed = ln.Cseq ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.perMARC.POL = gls(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.perMARC.POL = lme(fixed = tbio.allo.c ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMARC.POL, lme.perMARC.POL)
 #no difference in model fit
 
 #use linear model
-lm.perMARC.POL = lm(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.perMARC.POL = lm(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMARC.POL)
@@ -2216,15 +2387,15 @@ plot(lm.perMARC.POL)
 #####################
 
 #select random effects
-gls.medAGE.1C.POL = gls(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.medAGE.1C.POL = lme(fixed = ln.Cseq ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.medAGE.1C.POL = gls(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.medAGE.1C.POL = lme(fixed = tbio.allo.c ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medAGE.1C.POL, lme.medAGE.1C.POL)
 #no difference in model fit
 
 #use linear model
-lm.medAGE.1C.POL = lm(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.medAGE.1C.POL = lm(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medAGE.1C.POL)
@@ -2234,15 +2405,15 @@ plot(lm.medAGE.1C.POL)
 ##########################
 
 #select random effects
-gls.durC.POL = gls(ln.Cseq ~ dur, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.durC.POL = lme(fixed = ln.Cseq ~ dur, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.durC.POL = gls(tbio.allo.c ~ dur, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.durC.POL = lme(fixed = tbio.allo.c ~ dur, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.durC.POL, lme.durC.POL)
 #no difference in model fit
 
 #use linear model
-lm.durC.POL = lm(ln.Cseq ~ dur, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.durC.POL = lm(tbio.allo.c ~ dur, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.durC.POL)
@@ -2252,15 +2423,15 @@ plot(lm.durC.POL)
 ###########
 
 #select random effects
-gls.ydC.POL = gls(ln.Cseq ~ yd, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
-lme.ydC.POL = lme(fixed = ln.Cseq ~ yd, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+gls.ydC.POL = gls(tbio.allo.c ~ yd, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lme.ydC.POL = lme(fixed = tbio.allo.c ~ yd, random = ~1|ID, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.ydC.POL, lme.ydC.POL)
 #no difference in model fit
 
 #use linear model
-lm.ydC.POL = lm(ln.Cseq ~ yd, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
+lm.ydC.POL = lm(tbio.allo.c ~ yd, subset = sitrcla$fiac == "POL",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.ydC.POL)
@@ -2276,15 +2447,15 @@ plot(lm.ydC.POL)
 #############
 
 #select random effects
-gls.HageC.SAW = gls(ln.Cseq ~ Hage, subset = sitrcla$fiac == "SAW", data = sitrcla, na.action = na.omit)
-lme.HageC.SAW = lme(fixed = ln.Cseq ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.HageC.SAW = gls(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "SAW", data = sitrcla, na.action = na.omit)
+lme.HageC.SAW = lme(fixed = tbio.allo.c ~ Hage, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.SAW, lme.HageC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.HageC.SAW = lm(ln.Cseq ~ Hage, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.HageC.SAW = lm(tbio.allo.c ~ Hage, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.SAW)
@@ -2294,15 +2465,15 @@ plot(lm.HageC.SAW)
 ################
 
 #select random effects
-gls.HageC.SAW2 = gls(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.HageC.SAW2 = lme(fixed = ln.Cseq ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.HageC.SAW2 = gls(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.HageC.SAW2 = lme(fixed = tbio.allo.c ~ Hage + I(Hage^2), random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC.SAW2, lme.HageC.SAW2)
 #no difference in model fit
 
 #use linear model
-lm.HageC.SAW2 = lm(ln.Cseq ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.HageC.SAW2 = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC.SAW2)
@@ -2312,15 +2483,15 @@ plot(lm.HageC.SAW2)
 ####################
 
 #select random effects
-gls.POP_DensitC.SAW = gls(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.POP_DensitC.SAW = lme(fixed = ln.Cseq ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.POP_DensitC.SAW = gls(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.POP_DensitC.SAW = lme(fixed = tbio.allo.c ~ POP_Densit, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.POP_DensitC.SAW, lme.POP_DensitC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.POP_DensitC.SAW = lm(ln.Cseq ~ POP_Densit, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.POP_DensitC.SAW = lm(tbio.allo.c ~ POP_Densit, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.POP_DensitC.SAW)
@@ -2330,15 +2501,15 @@ plot(lm.POP_DensitC.SAW)
 ##############
 
 #select random effects
-gls.SiltC.SAW = gls(ln.Cseq ~ Silt, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.SiltC.SAW = lme(fixed = ln.Cseq ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.SiltC.SAW = gls(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.SiltC.SAW = lme(fixed = tbio.allo.c ~ Silt, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.SiltC.SAW, lme.SiltC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.SiltC.SAW = lm(ln.Cseq ~ Silt, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.SiltC.SAW = lm(tbio.allo.c ~ Silt, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.SiltC.SAW)
@@ -2348,15 +2519,15 @@ plot(lm.SiltC.SAW)
 ###############
 
 #select random effects
-gls.medINC.1C.SAW = gls(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.medINC.1C.SAW = lme(fixed = ln.Cseq ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.medINC.1C.SAW = gls(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.medINC.1C.SAW = lme(fixed = tbio.allo.c ~ medINC.1, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medINC.1C.SAW, lme.medINC.1C.SAW)
 #no difference in model fit
 
 #use linear model
-lm.medINC.1C.SAW = lm(ln.Cseq ~ medINC.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.medINC.1C.SAW = lm(tbio.allo.c ~ medINC.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medINC.1C.SAW)
@@ -2366,15 +2537,15 @@ plot(lm.medINC.1C.SAW)
 ################
 
 #select random effects
-gls.TotalValuaC.SAW = gls(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.TotalValuaC.SAW = lme(fixed = ln.Cseq ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.TotalValuaC.SAW = gls(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.TotalValuaC.SAW = lme(fixed = tbio.allo.c ~ TotalValua, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.TotalValuaC.SAW, lme.TotalValuaC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.TotalValuaC.SAW = lm(ln.Cseq ~ TotalValua, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.TotalValuaC.SAW = lm(tbio.allo.c ~ TotalValua, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.TotalValuaC.SAW)
@@ -2384,15 +2555,15 @@ plot(lm.TotalValuaC.SAW)
 ################
 
 #select random effects
-gls.perVACC.SAW = gls(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.perVACC.SAW = lme(fixed = ln.Cseq ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.perVACC.SAW = gls(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.perVACC.SAW = lme(fixed = tbio.allo.c ~ perVAC, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perVACC.SAW, lme.perVACC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.perVACC.SAW = lm(ln.Cseq ~ perVAC, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.perVACC.SAW = lm(tbio.allo.c ~ perVAC, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perVACC.SAW)
@@ -2402,15 +2573,15 @@ plot(lm.perVACC.SAW)
 ##################
 
 #select random effects
-gls.perMINC.SAW = gls(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.perMINC.SAW = lme(fixed = ln.Cseq ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.perMINC.SAW = gls(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.perMINC.SAW = lme(fixed = tbio.allo.c ~ perMIN, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMINC.SAW, lme.perMINC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.perMINC.SAW = lm(ln.Cseq ~ perMIN, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.perMINC.SAW = lm(tbio.allo.c ~ perMIN, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMINC.SAW)
@@ -2420,15 +2591,15 @@ plot(lm.perMINC.SAW)
 #################
 
 #select random effects
-gls.perMARC.SAW = gls(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.perMARC.SAW = lme(fixed = ln.Cseq ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.perMARC.SAW = gls(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.perMARC.SAW = lme(fixed = tbio.allo.c ~ perMAR, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMARC.SAW, lme.perMARC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.perMARC.SAW = lm(ln.Cseq ~ perMAR, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.perMARC.SAW = lm(tbio.allo.c ~ perMAR, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMARC.SAW)
@@ -2438,15 +2609,15 @@ plot(lm.perMARC.SAW)
 #####################
 
 #select random effects
-gls.medAGE.1C.SAW = gls(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.medAGE.1C.SAW = lme(fixed = ln.Cseq ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.medAGE.1C.SAW = gls(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.medAGE.1C.SAW = lme(fixed = tbio.allo.c ~ medAGE.1, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medAGE.1C.SAW, lme.medAGE.1C.SAW)
 #no difference in model fit
 
 #use linear model
-lm.medAGE.1C.SAW = lm(ln.Cseq ~ medAGE.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.medAGE.1C.SAW = lm(tbio.allo.c ~ medAGE.1, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medAGE.1C.SAW)
@@ -2456,15 +2627,15 @@ plot(lm.medAGE.1C.SAW)
 ##########################
 
 #select random effects
-gls.durC.SAW = gls(ln.Cseq ~ dur, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.durC.SAW = lme(fixed = ln.Cseq ~ dur, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.durC.SAW = gls(tbio.allo.c ~ dur, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.durC.SAW = lme(fixed = tbio.allo.c ~ dur, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.durC.SAW, lme.durC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.durC.SAW = lm(ln.Cseq ~ dur, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.durC.SAW = lm(tbio.allo.c ~ dur, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.durC.SAW)
@@ -2474,15 +2645,15 @@ plot(lm.durC.SAW)
 ###########
 
 #select random effects
-gls.ydC.SAW = gls(ln.Cseq ~ yd, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
-lme.ydC.SAW = lme(fixed = ln.Cseq ~ yd, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+gls.ydC.SAW = gls(tbio.allo.c ~ yd, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lme.ydC.SAW = lme(fixed = tbio.allo.c ~ yd, random = ~1|ID, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.ydC.SAW, lme.ydC.SAW)
 #no difference in model fit
 
 #use linear model
-lm.ydC.SAW = lm(ln.Cseq ~ yd, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
+lm.ydC.SAW = lm(tbio.allo.c ~ yd, subset = sitrcla$fiac == "SAW",  data = sitrcla, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.ydC.SAW)
@@ -2498,15 +2669,15 @@ plot(lm.ydC.SAW)
 #############
 
 #select random effects
-gls.HageC = gls(ln.Cseq ~ Hage, data = sitr, na.action = na.omit)
-lme.HageC = lme(fixed = ln.Cseq ~ Hage, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.HageC = gls(tbio.allo.c ~ Hage, data = sitr, na.action = na.omit)
+lme.HageC = lme(fixed = tbio.allo.c ~ Hage, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC, lme.HageC)
 #no difference in model fit
 
 #use linear model
-lm.HageC = lm(ln.Cseq ~ Hage, data = sitr, na.action = na.omit)
+lm.HageC = lm(tbio.allo.c ~ Hage, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC)
@@ -2516,15 +2687,15 @@ plot(lm.HageC)
 ################
 
 #select random effects
-gls.HageC2 = gls(ln.Cseq ~ Hage + I(Hage^2), data = sitr, na.action = na.omit)
-lme.HageC2 = lme(fixed = ln.Cseq ~ Hage + I(Hage^2), random = ~1|ID, data = sitr, na.action = na.omit)
+gls.HageC2 = gls(tbio.allo.c ~ Hage + I(Hage^2), data = sitr, na.action = na.omit)
+lme.HageC2 = lme(fixed = tbio.allo.c ~ Hage + I(Hage^2), random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.HageC2, lme.HageC2)
 #no difference in model fit
 
 #use linear model
-lm.HageC2 = lm(ln.Cseq ~ Hage + I(Hage^2), data = sitr, na.action = na.omit)
+lm.HageC2 = lm(tbio.allo.c ~ Hage + I(Hage^2), data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.HageC2)
@@ -2534,15 +2705,15 @@ plot(lm.HageC2)
 ####################
 
 #select random effects
-gls.POP_DensitC = gls(ln.Cseq ~ POP_Densit, data = sitr, na.action = na.omit)
-lme.POP_DensitC = lme(fixed = ln.Cseq ~ POP_Densit, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.POP_DensitC = gls(tbio.allo.c ~ POP_Densit, data = sitr, na.action = na.omit)
+lme.POP_DensitC = lme(fixed = tbio.allo.c ~ POP_Densit, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.POP_DensitC, lme.POP_DensitC)
 #no difference in model fit
 
 #use linear model
-lm.POP_DensitC = lm(ln.Cseq ~ POP_Densit, data = sitr, na.action = na.omit)
+lm.POP_DensitC = lm(tbio.allo.c ~ POP_Densit, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.POP_DensitC)
@@ -2552,15 +2723,15 @@ plot(lm.POP_DensitC)
 ##############
 
 #select random effects
-gls.SiltC = gls(ln.Cseq ~ Silt, data = sitr, na.action = na.omit)
-lme.SiltC = lme(fixed = ln.Cseq ~ Silt, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.SiltC = gls(tbio.allo.c ~ Silt, data = sitr, na.action = na.omit)
+lme.SiltC = lme(fixed = tbio.allo.c ~ Silt, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.SiltC, lme.SiltC)
 #no difference in model fit
 
 #use linear model
-lm.SiltC = lm(ln.Cseq ~ Silt, data = sitr, na.action = na.omit)
+lm.SiltC = lm(tbio.allo.c ~ Silt, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.SiltC)
@@ -2570,15 +2741,15 @@ plot(lm.SiltC)
 ###############
 
 #select random effects
-gls.medINC.1C = gls(ln.Cseq ~ medINC.1, data = sitr, na.action = na.omit)
-lme.medINC.1C = lme(fixed = ln.Cseq ~ medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.medINC.1C = gls(tbio.allo.c ~ medINC.1, data = sitr, na.action = na.omit)
+lme.medINC.1C = lme(fixed = tbio.allo.c ~ medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medINC.1C, lme.medINC.1C)
 #no difference in model fit
 
 #use linear model
-lm.medINC.1C = lm(ln.Cseq ~ medINC.1, data = sitr, na.action = na.omit)
+lm.medINC.1C = lm(tbio.allo.c ~ medINC.1, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medINC.1C)
@@ -2588,15 +2759,15 @@ plot(lm.medINC.1C)
 ################
 
 #select random effects
-gls.TotalValuaC = gls(ln.Cseq ~ TotalValua, data = sitr, na.action = na.omit)
-lme.TotalValuaC = lme(fixed = ln.Cseq ~ TotalValua, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.TotalValuaC = gls(tbio.allo.c ~ TotalValua, data = sitr, na.action = na.omit)
+lme.TotalValuaC = lme(fixed = tbio.allo.c ~ TotalValua, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.TotalValuaC, lme.TotalValuaC)
 #no difference in model fit
 
 #use linear model
-lm.TotalValuaC = lm(ln.Cseq ~ TotalValua, data = sitr, na.action = na.omit)
+lm.TotalValuaC = lm(tbio.allo.c ~ TotalValua, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.TotalValuaC)
@@ -2606,15 +2777,15 @@ plot(lm.TotalValuaC)
 ################
 
 #select random effects
-gls.perVACC = gls(ln.Cseq ~ perVAC, data = sitr, na.action = na.omit)
-lme.perVACC = lme(fixed = ln.Cseq ~ perVAC, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.perVACC = gls(tbio.allo.c ~ perVAC, data = sitr, na.action = na.omit)
+lme.perVACC = lme(fixed = tbio.allo.c ~ perVAC, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perVACC, lme.perVACC)
 #no difference in model fit
 
 #use linear model
-lm.perVACC = lm(ln.Cseq ~ perVAC, data = sitr, na.action = na.omit)
+lm.perVACC = lm(tbio.allo.c ~ perVAC, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perVACC)
@@ -2624,15 +2795,15 @@ plot(lm.perVACC)
 ##################
 
 #select random effects
-gls.perMINC = gls(ln.Cseq ~ perMIN, data = sitr, na.action = na.omit)
-lme.perMINC = lme(fixed = ln.Cseq ~ perMIN, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.perMINC = gls(tbio.allo.c ~ perMIN, data = sitr, na.action = na.omit)
+lme.perMINC = lme(fixed = tbio.allo.c ~ perMIN, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMINC, lme.perMINC)
 #no difference in model fit
 
 #use linear model
-lm.perMINC = lm(ln.Cseq ~ perMIN, data = sitr, na.action = na.omit)
+lm.perMINC = lm(tbio.allo.c ~ perMIN, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMINC)
@@ -2642,15 +2813,15 @@ plot(lm.perMINC)
 #################
 
 #select random effects
-gls.perMARC = gls(ln.Cseq ~ perMAR, data = sitr, na.action = na.omit)
-lme.perMARC = lme(fixed = ln.Cseq ~ perMAR, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.perMARC = gls(tbio.allo.c ~ perMAR, data = sitr, na.action = na.omit)
+lme.perMARC = lme(fixed = tbio.allo.c ~ perMAR, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.perMARC, lme.perMARC)
 #no difference in model fit
 
 #use linear model
-lm.perMARC = lm(ln.Cseq ~ perMAR, data = sitr, na.action = na.omit)
+lm.perMARC = lm(tbio.allo.c ~ perMAR, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.perMARC)
@@ -2660,15 +2831,15 @@ plot(lm.perMARC)
 ###############
 
 #select random effects
-gls.medINC.1C = gls(ln.Cseq ~ medINC.1, data = sitr, na.action = na.omit)
-lme.medINC.1C = lme(fixed = ln.Cseq ~ medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.medINC.1C = gls(tbio.allo.c ~ medINC.1, data = sitr, na.action = na.omit)
+lme.medINC.1C = lme(fixed = tbio.allo.c ~ medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medINC.1C, lme.medINC.1C)
 #no difference in model fit
 
 #use linear model
-lm.medINC.1C = lm(ln.Cseq ~ medINC.1, data = sitr, na.action = na.omit)
+lm.medINC.1C = lm(tbio.allo.c ~ medINC.1, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medINC.1C)
@@ -2678,15 +2849,15 @@ plot(lm.medINC.1C)
 #####################
 
 #select random effects
-gls.medAGE.1C = gls(ln.Cseq ~ medAGE.1, data = sitr, na.action = na.omit)
-lme.medAGE.1C = lme(fixed = ln.Cseq ~ medAGE.1, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.medAGE.1C = gls(tbio.allo.c ~ medAGE.1, data = sitr, na.action = na.omit)
+lme.medAGE.1C = lme(fixed = tbio.allo.c ~ medAGE.1, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.medAGE.1C, lme.medAGE.1C)
 #no difference in model fit
 
 #use linear model
-lm.medAGE.1C = lm(ln.Cseq ~ medAGE.1, data = sitr, na.action = na.omit)
+lm.medAGE.1C = lm(tbio.allo.c ~ medAGE.1, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.medAGE.1C)
@@ -2696,15 +2867,15 @@ plot(lm.medAGE.1C)
 ##########################
 
 #select random effects
-gls.durC = gls(ln.Cseq ~ dur, data = sitr, na.action = na.omit)
-lme.durC = lme(fixed = ln.Cseq ~ dur, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.durC = gls(tbio.allo.c ~ dur, data = sitr, na.action = na.omit)
+lme.durC = lme(fixed = tbio.allo.c ~ dur, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.durC, lme.durC)
 #no difference in model fit
 
 #use linear model
-lm.durC = lm(ln.Cseq ~ dur, data = sitr, na.action = na.omit)
+lm.durC = lm(tbio.allo.c ~ dur, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.durC)
@@ -2714,255 +2885,378 @@ plot(lm.durC)
 ###########
 
 #select random effects
-gls.ydC = gls(ln.Cseq ~ yd, data = sitr, na.action = na.omit)
-lme.ydC = lme(fixed = ln.Cseq ~ yd, random = ~1|ID, data = sitr, na.action = na.omit)
+gls.ydC = gls(tbio.allo.c ~ yd, data = sitr, na.action = na.omit)
+lme.ydC = lme(fixed = tbio.allo.c ~ yd, random = ~1|ID, data = sitr, na.action = na.omit)
 
 #compare model fits using the likelihood ratio test
 anova(gls.ydC, lme.ydC)
 #no difference in model fit
 
 #use linear model
-lm.ydC = lm(ln.Cseq ~ yd, data = sitr, na.action = na.omit)
+lm.ydC = lm(tbio.allo.c ~ yd, data = sitr, na.action = na.omit)
 
 #verify homogeneity and normality of model residuals
 plot(lm.ydC)
 
-#############
-#############
-#Yard Size  #
-#############
-#############
+################################################################################
+################################################################################
+#Mutiple regressions examining the relative contribution of biogeosociochemical
+#variables to overall model fit
+################################################################################
+################################################################################
 
 #############
-#housing age#
+#############
+#All Biomass#
+#############
 #############
 
-#select random effects
-gls.Hageyd = gls(log(yd) ~Hage, data = sitr, na.action = na.omit)
-lme.Hageyd = lme(fixed = log(yd) ~Hage, random = ~1|ID, data = sitr, na.action = na.omit)
-
-#compare model fits using the likelihood ratio test
-anova(gls.HageC, lme.HageC)
-#no difference in model fit
-
-#use linear model
-lm.Hageyd = lm(log(yd) ~Hage, data = sitr, na.action = na.omit)
-
-#verify homogeneity and normality of model residuals
-plot(lm.Hageyd)
-
-################
-#housing age ^2#
-################
-
-#select random effects
-gls.Hageyd2 = gls(log(yd) ~Hage + I(Hage^2), data = sitr, na.action = na.omit)
-lme.Hageyd2 = lme(fixed = log(yd) ~Hage + I(Hage^2), random = ~1|ID, data = sitr, na.action = na.omit)
-
-#compare model fits using the likelihood ratio test
-anova(gls.Hageyd2, lme.Hageyd2)
-#no difference in model fit
-
-#use linear model
-lm.Hageyd2 = lm(log(yd) ~Hage + I(Hage^2), data = sitr, na.action = na.omit)
-
-#verify homogeneity and normality of model residuals
-plot(lm.Hageyd2)
-
-####################
-#population density#
-####################
-
-#select random effects
-gls.POP_Densityd = gls(log(yd) ~POP_Densit, data = sitr, na.action = na.omit)
-lme.POP_Densityd = lme(fixed = log(yd) ~POP_Densit, random = ~1|ID, data = sitr, na.action = na.omit)
-
-#compare model fits using the likelihood ratio test
-anova(gls.POP_DensitC, lme.POP_DensitC)
-#no difference in model fit
-
-#use linear model
-lm.POP_Densityd = lm(log(yd) ~POP_Densit, data = sitr, na.action = na.omit)
-
-#verify homogeneity and normality of model residuals
-plot(lm.POP_DensitC)
+#by medINC and medAGE
 
 ##############
-#percent silt#
+#collinearity#
 ##############
 
-#select random effects
-gls.Siltyd = gls(log(yd) ~Silt, data = sitr, na.action = na.omit)
-lme.Siltyd = lme(fixed = log(yd) ~Silt, random = ~1|ID, data = sitr, na.action = na.omit)
+#fit medAGE as a function of medINC
+lm.1 = lm(medAGE.1 ~ medINC.1, data = sitr)
+#no significant relationship. Data are not collinear and can be used in the same model
 
-#compare model fits using the likelihood ratio test
-anova(gls.SiltC, lme.SiltC)
-#no difference in model fit
+lm.incage = lm(tbio.allo.c ~ medINC.1 + medAGE.1, data = sitr, na.action = na.omit)
 
-#use linear model
-lm.Siltyd = lm(log(yd) ~Silt, data = sitr, na.action = na.omit)
+lm.incage.1 = lm(tbio.allo.c ~ medINC.1, data = sitr, na.action = na.omit)
+lm.incage.2 = lm(tbio.allo.c ~ medAGE.1, data = sitr, na.action = na.omit)
+AIC(lm.incage, lm.incage.1, lm.incage.2)
 
-#verify homogeneity and normality of model residuals
-plot(lm.SiltC)
+calc.relimp(lm.incage, type = c("lmg"), rela = TRUE)
 
-###############
-#median income#
-###############
+################################################################################
+################################################################################
+#Relationship between above- and below-ground C stocks
+################################################################################
+################################################################################
 
-#select random effects
-gls.medINC.1yd = gls(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
-lme.medINC.1yd = lme(fixed = log(yd) ~medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+lm.soiltree = lm(stoC_to50 ~ tbio.allo.c, data = sitr)
 
-#compare model fits using the likelihood ratio test
-anova(gls.medINC.1C, lme.medINC.1C)
-#no difference in model fit
 
-#use linear model
-lm.medINC.1yd = lm(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+####################################################################################
+####################################################################################
+#Make figures
+####################################################################################
+####################################################################################
+setwd("C:\\Users\\Alix\\Box Sync\\UNH\\Projects\\CCS_Manchester\\Data\\R Projects\\
+      carbon-small-cities\\Figures")
 
-#verify homogeneity and normality of model residuals
-plot(lm.medINC.1C)
+##########
+#Figure 2#
+##########
 
-################
-#assessed value#
-################
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 4.5, height= 3.5, paper="letter", pointsize=10)
 
-#select random effects
-gls.TotalValuayd = gls(log(yd) ~TotalValua, data = sitr, na.action = na.omit)
-lme.TotalValuayd = lme(fixed = log(yd) ~TotalValua, random = ~1|ID, data = sitr, na.action = na.omit)
+#name pdf export file
+#pdf(file="Figure_2.pdf")
 
-#compare model fits using the likelihood ratio test
-anova(gls.TotalValuaC, lme.TotalValuaC)
-#no difference in model fit
+#call jpeg file
+jpeg(file = "Figure_2.jpeg", width = 4.5, height = 3.5, units = "in", res = 400, pointsize = 10)
 
-#use linear model
-lm.TotalValuayd = lm(log(yd) ~TotalValua, data = sitr, na.action = na.omit)
+#set graphical parameters
+par(mfrow = c (1,1), mar = c(0.2, 0.25, 0.2, 0.2), oma = c(5,5,0.5,5))
 
-#verify homogeneity and normality of model residuals
-plot(lm.TotalValuaC)
+#create new column that makes Depth go in reverse order so that 
+#the shallowest soils go at the top of the plot when rotated horizontally
+sites_scn$DF = as.factor(ifelse(sites_scn$Depth.Fraction == "0 to 10", "E", 
+                                ifelse(sites_scn$Depth.Fraction == "10 to 20", "D",
+                                      ifelse(sites_scn$Depth.Fraction == "20 to 30", "C", 
+                                             ifelse(sites_scn$Depth.Fraction == "30 to 40", "B",
+                                                    ifelse(sites_scn$Depth.Fraction == "40 to 50", "A", NA))))))
 
-################
-#percent vacant#
-################
+boxplot(stoC ~ DF, data = sites_scn, horizontal = T,  axes = F,  notch = F, ylim = c(0, 6e4), range = 0,
+        col =c(adjustcolor("coral", alpha = 0.2), 
+               adjustcolor("coral", alpha = 0.4),
+               adjustcolor("coral", alpha = 0.6),
+               adjustcolor("coral", alpha = 0.8),
+               adjustcolor("coral", alpha = 1.0)))
+box(lty = 1)
+axis(1, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+axis(2, at = c(0.5, 1.5, 2.5, 3.5, 4.5, 5.5), lab = c("50", "40", "30", "20", "10", "0"), cex.axis = 1)
+mtext(side = 1, expression(paste("Soil C (kg "*m^{-2}*")")), line = 3, outer = T, cex = 1)
+mtext(side = 2, "Depth (cm)", line = 3, cex = 1)
+text(53e3, 5, "a")
+text(53e3, 4, "b")
+text(53e3, 3.25, "c")
+text(54e3, 2, "cd")
+text(53e3, 1, "d")
 
-#select random effects
-gls.perVACyd = gls(log(yd) ~perVAC, data = sitr, na.action = na.omit)
-lme.perVACyd = lme(fixed = log(yd) ~perVAC, random = ~1|ID, data = sitr, na.action = na.omit)
+dev.off()
 
-#compare model fits using the likelihood ratio test
-anova(gls.perVACC, lme.perVACC)
-#no difference in model fit
+##########
+#Figure 3#
+##########
 
-#use linear model
-lm.perVACyd = lm(log(yd) ~perVAC, data = sitr, na.action = na.omit)
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 3, height= 7, paper="letter", pointsize=12)
 
-#verify homogeneity and normality of model residuals
-plot(lm.perVACC)
+#name pdf export file
+#pdf(file="Figure_3.pdf")
+jpeg(file = "Figure_3.jpeg", width = 3, height = 7, units = "in", res = 400, pointsize = 10)
 
-##################
-#percent minority#
-##################
+par(mfrow = c (5,1), mar = c(0.25, 0.25, 0.25, 0.25), oma = c(5, 5, 5, 5))
 
-#select random effects
-gls.perMINyd = gls(log(yd) ~perMIN, data = sitr, na.action = na.omit)
-lme.perMINyd = lme(fixed = log(yd) ~perMIN, random = ~1|ID, data = sitr, na.action = na.omit)
+lm.10 = lm(stoC_to10 ~ Hage, data = sitr)
+plot(stoC_to10 ~ Hage, data = sitr, axes = F, pch = 21, col = "black", 
+     bg = adjustcolor("coral", alpha = 1.0), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0, 6e4), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(summary(lm.10)[[4]][2] * x + summary(lm.10)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(5, 55e3, "(a)", cex = 1.0)
+#text(100, 100, "y = 213.89 + 1.37 * x")
+text(100, 55e3, expression("p = 0.001," ~r^{2}*" = 0.28"))
 
-#compare model fits using the likelihood ratio test
-anova(gls.perMINC, lme.perMINC)
-#no difference in model fit
+lm.20 = lm(stoC_at20 ~ Hage, data = sitr)
+plot(stoC_at20 ~ Hage, data = sitr, axes = F, pch = 22, col = "black", 
+     bg = adjustcolor("coral", alpha = 0.8), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0, 6e4), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(summary(lm.20)[[4]][2] * x + summary(lm.20)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(5, 55e3, "(b)", cex = 1.0)
+#text(100, 55e3, "y = 190.85 + 0.87 * x")
+text(100, 55e3, expression("p = 0.036," ~r^{2}*" = 0.10"))
 
-#use linear model
-lm.perMINyd = lm(log(yd) ~perMIN, data = sitr, na.action = na.omit)
+lm.30 = lm(stoC_at30 ~ Hage, data = sitr)
+plot(stoC_at30 ~ Hage, data = sitr, axes = F, pch = 23, col = "black", 
+     bg = adjustcolor("coral", alpha =0.6), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0, 6e4), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(summary(lm.30)[[4]][2] * x + summary(lm.30)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(5, 55e3, "(c)", cex = 1.0)
+#text(100, 500, "y = 97.21 + 1.41 * x")
+text(100, 475e2, expression("p = 0.037," ~r^{2}*" = 0.11"))
 
-#verify homogeneity and normality of model residuals
-plot(lm.perMINC)
+lm.40 = lm(stoC_at40 ~ Hage, data = sitr)
+plot(stoC_at40 ~ Hage, data = sitr, axes = F, pch = 24, col = "black", 
+     bg = adjustcolor("coral", alpha = 0.4), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0, 6e4), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(summary(lm.40)[[4]][2] * x + summary(lm.40)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(5, 55e3, "(d)", cex = 1.0)
+#text(100, 55e3, "y = 62.09 + 1.71 * x")
+text(100, 575e2, expression("p = 0.033" ~r^{2}*" = 0.11"))
 
-#################
-#percent married#
-#################
+lm.50 = lm(stoC_at50 ~ Hage, data = sitr)
+plot(stoC_at50 ~ Hage, data = sitr, axes = F, pch = 25, col = "black", 
+     bg = adjustcolor("coral", alpha = 0.2), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0, 6e4), xlim = c(0,150))
+box(lty = 1)
+axis(1, at = c(0, 35, 70, 105, 140), cex.axis = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(summary(lm.50)[[4]][2] * x + summary(lm.50)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(5, 55e3, "(e)", cex = 1.0)
+#text(100, 500, "y = 77.06 + 0.88 * x")
+text(100, 55e3, expression("p = 0.067," ~r^{2}*" = 0.13"))
+mtext(side = 1, "Housing  Age (years)", line = 3, cex = 0.75)
+mtext(side = 2, expression(paste("Soil C (kg "*m^{-2}*")")), line = 2, outer = T, cex = 0.75)
 
-#select random effects
-gls.perMARyd = gls(log(yd) ~perMAR, data = sitr, na.action = na.omit)
-lme.perMARyd = lme(fixed = log(yd) ~perMAR, random = ~1|ID, data = sitr, na.action = na.omit)
+dev.off()
 
-#compare model fits using the likelihood ratio test
-anova(gls.perMARC, lme.perMARC)
-#no difference in model fit
+##########
+#Figure 4#
+##########
 
-#use linear model
-lm.perMARyd = lm(log(yd) ~perMAR, data = sitr, na.action = na.omit)
+#recode size class for plotting
 
-#verify homogeneity and normality of model residuals
-plot(lm.perMARC)
+sitrcla$fiac.2 = ifelse(sitrcla$fiac == "SAP", 1, ifelse(sitrcla$fiac == "POL", 2,
+                                                         ifelse(sitrcla$fiac == "SAW", 3, NA)))
 
-###############
-#median income#
-###############
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 4.5, height= 3.5, paper="letter", pointsize=10)
 
-#select random effects
-gls.medINC.1yd = gls(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
-lme.medINC.1yd = lme(fixed = log(yd) ~medINC.1, random = ~1|ID, data = sitr, na.action = na.omit)
+#name pdf export file
+#pdf(file="Figure_4.pdf")
+jpeg(file = "Figure_4.jpeg", width = 4.5, height = 3.5, units = "in", res = 400, pointsize = 10)
 
-#compare model fits using the likelihood ratio test
-anova(gls.medINC.1C, lme.medINC.1C)
-#no difference in model fit
+par(mfrow = c (1,1), mar = c(0.25, 0.25, 0.25, 0.25), oma = c(5,5,0.5,5))
 
-#use linear model
-lm.medINC.1yd = lm(log(yd) ~medINC.1, data = sitr, na.action = na.omit)
+boxplot(tbio.allo.c ~ fiac.2, data = sitrcla, range = 0, axes = F, ylim = c(0,5e4), 
+        col = c(adjustcolor("darkolivegreen", alpha = 0.2), 
+                adjustcolor("darkolivegreen", alpha = 0.6),
+                adjustcolor("darkolivegreen", alpha = 1.0)))
+         
+box(lty = 1)
+axis(1, at = c(1:3), lab = c("Sapling", "Pole Timb", "Saw Timb"))
+axis(2, at = c(0, 1e4, 2e4, 3e4, 4e4, 5e4), lab = c(0, 1, 2, 3, 4, 5))
+mtext(side = 2, expression(paste("Biomass C (kg "*m^{-2}*")")), line = 2.5, outer = T, cex = 1)
+mtext(side = 1, "Size Class", line = 2.5, cex = 1)
+text(1, 1e4, "a", cex = 1)
+text(2, 1e4, "ab", cex = 1)
+text(3, 5e4, "b", cex = 1)
 
-#verify homogeneity and normality of model residuals
-plot(lm.medINC.1C)
+dev.off()
 
-#####################
-#median resident age#
-#####################
+##########
+#Figure 5#
+##########
 
-#select random effects
-gls.medAGE.1yd = gls(log(yd) ~medAGE.1, data = sitr, na.action = na.omit)
-lme.medAGE.1yd = lme(fixed = log(yd) ~medAGE.1, random = ~1|ID, data = sitr, na.action = na.omit)
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 3, height= 6, paper="letter", pointsize=12)
 
-#compare model fits using the likelihood ratio test
-anova(gls.medAGE.1C, lme.medAGE.1C)
-#no difference in model fit
+#name pdf export file
+#pdf(file="Figure_5.pdf")
+jpeg(file = "Figure_5.jpeg", width = 3, height = 6, units = "in", res = 400, pointsize = 10)
 
-#use linear model
-lm.medAGE.1yd = lm(log(yd) ~medAGE.1, data = sitr, na.action = na.omit)
+par(mfrow = c (3,1), mar = c(0.25, 0.25, 0.25, 0.25), oma = c(5, 5, 5, 5))
 
-#verify homogeneity and normality of model residuals
-plot(lm.medAGE.1C)
+sitrclasub.1 = sitrcla[sitrcla$fiac == "SAP", ]
+sitrclasub = sitrclasub.1[complete.cases(sitrclasub.1$tbio.allo.c), ]
+sitrclasub = sitrclasub[order(sitrclasub$Hage), ]
 
-##########################
-#median resident duration#
-##########################
+lm.SAP = lm(tbio.allo.c ~ Hage, subset = fiac == "SAP", data = sitrcla)
+qd.SAP = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = fiac == "SAP", data = sitrcla)
 
-#select random effects
-gls.duryd = gls(log(yd) ~dur, data = sitr, na.action = na.omit)
-lme.duryd = lme(fixed = log(yd) ~dur, random = ~1|ID, data = sitr, na.action = na.omit)
+plot(tbio.allo.c ~ Hage, subset = fiac == "SAP", data = sitrcla, axes = F, pch = 21, col = "black", 
+     bg = adjustcolor("darkolivegreen", alpha = 0.2), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0,2200), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 0.5e3, 1e3, 1.5e3, 2e3), c("0.00", "0.05", "0.10", "0.15", "0.20"), cex.axis = 1)
+curve(predict(lm.SAP,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 1)
+curve(predict(qd.SAP,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 2)
+text(5, 2e3, "(a)", cex = 1)
+#text(100, 100, "y = 213.89 + 1.37 * x")
+text(95, 2e3, expression("lin: p = 0.46," ~r^{2}*" = -0.03"))
+text(87, 1.85e3, expression("quad: p = 0.76," ~r^{2}*" = -0.10"))
 
-#compare model fits using the likelihood ratio test
-anova(gls.durC, lme.durC)
-#no difference in model fit
+sitrclasub.1 = sitrcla[sitrcla$fiac == "POL", ]
+sitrclasub = sitrclasub.1[complete.cases(sitrclasub.1$tbio.allo.c), ]
+sitrclasub = sitrclasub[order(sitrclasub$Hage), ]
 
-#use linear model
-lm.duryd = lm(log(yd) ~dur, data = sitr, na.action = na.omit)
+lm.POL = lm(tbio.allo.c ~ Hage, subset = fiac == "POL", data = sitrcla)
+qd.POL = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = fiac == "POL", data = sitrcla)
 
-#verify homogeneity and normality of model residuals
-plot(lm.durC)
+plot(tbio.allo.c ~ Hage, subset = fiac == "POL", data = sitrcla, axes = F, pch = 22, col = "black", 
+     bg = adjustcolor("darkolivegreen", alpha = 0.6), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0,8950), xlim = c(0,150))
+box(lty = 1)
+axis(2, at = c(0, 2e3, 4e3, 6e3, 8e3), c("0.0", "0.2", "0.4", "0.6", "0.8"), cex.axis = 1)
+curve(predict(lm.POL,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 1)
+curve(predict(qd.POL,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 2)
+text(5, 8e3, "(b)", cex = 1)
+#text(100, 100, "y = 213.89 + 1.37 * x")
+text(95, 8e3, expression("lin: p = 0.35," ~r^{2}*" = 0.00"))
+text(87, 7.35e3, expression("quad: p = 0.62," ~r^{2}*" = -0.05"))
 
-###########
-#yard size#
-###########
 
-#select random effects
-gls.ydyd = gls(yd ~ yd, data = sitr, na.action = na.omit)
-lme.ydyd = lme(fixed = yd ~ yd, random = ~1|ID, data = sitr, na.action = na.omit)
+sitrclasub.1 = sitrcla[sitrcla$fiac == "SAW", ]
+sitrclasub = sitrclasub.1[complete.cases(sitrclasub.1$tbio.allo.c), ]
+sitrclasub = sitrclasub[order(sitrclasub$Hage), ]
 
-#compare model fits using the likelihood ratio test
-anova(gls.ydC, lme.ydC)
-#no difference in model fit
+lm.SAW = lm(tbio.allo.c ~ Hage, subset = fiac == "SAW", data = sitrclasub)
+qd.SAW = lm(tbio.allo.c ~ Hage + I(Hage^2), subset = fiac == "SAW", data = sitrclasub)
 
-#use linear model
-lm.ydyd = lm(yd ~ yd, data = sitr, na.action = na.omit)
+plot(tbio.allo.c ~ Hage, subset = fiac == "SAW", data = sitrcla, axes = F, pch = 23, col = "black", 
+     bg = adjustcolor("darkolivegreen", alpha = 1.0), cex = 1.5, xlab = " ", ylab = " ", 
+     ylim = c(0,60000), xlim = c(0,150))# 
+box(lty = 1)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+curve(predict(lm.SAW,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 1)
+curve(predict(qd.SAW,newdata=data.frame(Hage=x)),add=T, lwd = 2, lty = 2)
 
-#verify homogeneity and normality of model residuals
-plot(lm.ydC)
+text(5, 5.85e4, "(c)", cex = 1)
+#text(100, 100, "y = 213.89 + 1.37 * x")
+text(95, 5.85e4, expression("lin: p = 0.85," ~r^{2}*" = -0.04"))
+text(85, 5.45e4, expression("quad: p = 0.06," ~r^{2}*" = 0.16"))
+axis(1, at = c(0, 35, 70, 105, 140), cex.axis = 1)
+mtext(side = 1, "Housing  Age (years)", line = 3, cex = 0.85)
+mtext(side = 2, expression(paste("Biomass C (kg "*m^{-2}*")")), line = 2, outer = T, cex = 0.85)
+
+dev.off()
+
+##########
+#Figure 6#
+##########
+
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 5.5, height= 3, paper="letter", pointsize=12)
+
+#name pdf export file
+#pdf(file="Figure_6.pdf")
+jpeg(file = "Figure_6.jpeg", width = 5.5, height = 3, units = "in", res = 400, pointsize = 10)
+
+par(mfrow = c (1,3), mar = c(0.25, 0.25, 1.25, 0.25), oma = c(5, 5, 4, 0.5))
+
+lm.medINC = lm(tbio.allo.c ~ medINC.1, data = sitr)
+plot(tbio.allo.c ~ medINC, data = sitr, axes = F, pch = 21, col = "black", bg = "gray80", cex = 1.5, xlab = " ", ylab = " ",
+     ylim = c(0, 5.5e4))
+points(tbio.allo.c ~ medINC.1, data = sitr, pch = 21, col = "black", bg = "gold", cex = 1.5, ylim = c(0, 5.5e4))
+box(lty = 1)
+axis(1, at = c(4e4, 6e4, 8e4, 1e5), lab = c(40, 60, 80, 100), cex.axis = 1)
+axis(2, at = c(0, 1e4, 2e4, 3e4, 4e4, 5e4), lab = c(0, 1, 2, 3, 4, 5), cex.axis = 1)
+text(35000, 5.25e4, "(a)", cex = 1)
+text(85e3, 5.25e4, expression("p = 0.008," ~r^{2}*" = 0.20"))
+curve(summary(lm.medINC)[[4]][2] * x + summary(lm.medINC)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+mtext(side = 1, "Median Income (1,000$)", line = 2.5, outer = F, cex = 0.75)
+mtext(side = 2, expression(paste("Observed Biomass C (kg "*m^{-2}*")")), line = 2.5, outer = F, cex = 0.75)
+
+lm.medAGE = lm(tbio.allo.c ~ medAGE.1, data = sitr)
+plot(tbio.allo.c ~ MEDIANAGE, data = sitr, axes = F, pch = 22, col = "black", bg = "gray80", cex = 1.5, xlab = " ", ylab = " ",
+     ylim = c(0, 5.5e4), xlim = c(20, 80))
+points(tbio.allo.c ~ medAGE.1, data = sitr, pch = 22, col = "black", bg = "dodgerblue", cex = 1.5)
+box(lty = 1)
+axis(1, at = c(20, 40, 60, 80), cex.axis = 1)
+text(22, 5.25e4, "(b)", cex = 1)
+curve(summary(lm.medAGE)[[4]][2] * x + summary(lm.medAGE)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(60, 5.25e4, expression("p = 0.011," ~r^{2}*" = 0.18"))
+mtext(side = 1, "Resident Age (years)", line = 2.5, outer = F, cex = 0.75)
+
+
+sitrsub = sitr[complete.cases(sitr$medAGE.1) & complete.cases(sitr$medINC.1) & complete.cases(sitr$tbio.allo.c), ]
+lm.incage = lm(tbio.allo.c ~ medINC.1 + medAGE.1, data = sitrsub, na.action = na.omit)
+lm.incall = lm(sitrsub$tbio.allo.c ~ predict(lm.incage))
+
+plot(sitrsub$tbio.allo.c ~ predict(lm.incage), axes = F, pch = 23, col = "black", bg = "darkolivegreen", 
+     xlab = " ", ylab = " ", xlim = c(0, 5.5e4), ylim = c(0, 5.5e4), cex = 1.5)
+box(lty = 1)     
+axis(1, at = c(0, 1e4, 2e4, 3e4, 4e4, 5e4), lab = c(0, 1, 2, 3, 4, 5), cex.axis = 1)
+text(1e3, 5.25e4, "(c)", cex = 1)
+
+curve(summary(lm.incall)[[4]][2] * x  + summary(lm.incall)[[4]][1], lwd = 2, lty = 1, add=TRUE)
+text(25e3, 5.25e4, expression("p = 0.008," ~r^{2}*" = 0.27"))
+mtext(side = 1, expression(paste("Predicted Biomass C (kg "*m^{-2}*")")), line = 2.75, outer = F, cex = 0.75)
+
+dev.off()
+
+#############
+#SI Figure 1#
+#############
+
+lm.ydSAW = lm(tbio.allo.c ~ yd, data = sitrcla, subset = sitrcla$fiac == "SAW")
+lm.ydSAWsub = lm(tbio.allo.c ~ yd, data = sitrcla, subset = sitrcla$fiac == "SAW" & sitrcla$yd < 0.3)
+
+#call pdf.options to define graphical parameters in pdf export file
+#pdf.options(width= 4.5, height= 3.5, paper="letter", pointsize=10)
+
+#name pdf export file
+#pdf(file="SI_Figure_1.pdf")
+jpeg(file = "SI_Figure_1.jpeg", width = 4.5, height = 3.5, units = "in", res = 400, pointsize = 10)
+
+par(mfrow = c (1,1), mar = c(5,5,0.5,5))
+
+
+plot(tbio.allo.c ~ yd, data = sitrcla, subset = sitrcla$fiac == "SAW", ylim = c(0,60000), yaxt = "n",
+     pch = 21, bg = "gray80", cex = 1.5, xlab = "Yard Size (ha)",
+     ylab = expression(paste("Biomass C (kg "*m^{-2}*")")))
+points(tbio.allo.c ~ yd, data = sitrcla, subset = sitrcla$fiac == "SAW" & sitrcla$yd < 0.3,
+       pch = 21,bg = "darkolivegreen", cex = 1.5)
+axis(2, at = c(0, 2e4, 4e4, 6e4), c(0, 2, 4, 6), cex.axis = 1)
+
+curve(predict(lm.ydSAW,newdata=data.frame(yd=x)),add=T, lwd = 2, lty = 1)
+curve(predict(lm.ydSAWsub,newdata=data.frame(yd=x)),add=T, lwd = 2, lty = 2)
+
+text(0.27, 5.85e4, expression("all yards: p = 0.04," ~r^{2}*" = 0.13"))
+text(0.25, 5.44e4, expression("yards < 0.3 ha: p = 0.75," ~r^{2}*" = -0.04"))
+
+
+dev.off()
+
